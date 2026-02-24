@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>X / O Game</title>
+  <style>
+    :root {
+      --bg-1: #1b1f3b;
+      --bg-2: #2a2f5f;
+      --bg-3: #101323;
+      --panel: rgba(255, 255, 255, 0.09);
+      --panel-border: rgba(255, 255, 255, 0.2);
+      --text: #f5f7ff;
+      --muted: #ccd2ff;
+      --x: #5de2e7;
+      --o: #ff9f6e;
+      --cursor: #ffe66d;
+      --ok: #88f78f;
+      --danger: #ff7070;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, #35408f 0%, transparent 30%),
+        radial-gradient(circle at 85% 10%, #7a3478 0%, transparent 28%),
+        radial-gradient(circle at 70% 80%, #26755a 0%, transparent 30%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2) 50%, var(--bg-3));
+      display: grid;
+      place-items: center;
+      padding-top: max(14px, env(safe-area-inset-top));
+      padding-right: max(14px, env(safe-area-inset-right));
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+      padding-left: max(14px, env(safe-area-inset-left));
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .game-shell {
+      width: min(94vw, 760px);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.34);
+    }
+
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    label {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    select, button {
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.13);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    select:focus, button:focus {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+
+    .status {
+      margin: 8px 0 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.2);
+      font-size: 0.98rem;
+      line-height: 1.3;
+      min-height: 46px;
+    }
+
+    .board {
+      width: 92vw;
+      max-width: 420px;
+      height: 92vw;
+      max-height: 420px;
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .cell {
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      display: grid;
+      place-items: center;
+      font-size: clamp(2rem, 7vw, 3.1rem);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      user-select: none;
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+      touch-action: manipulation;
+    }
+
+    .cell.cursor {
+      border-color: var(--cursor);
+      box-shadow: 0 0 0 3px rgba(255, 230, 109, 0.2) inset;
+      transform: translateY(-1px);
+    }
+
+    .cell.picked {
+      border-color: var(--x);
+      box-shadow: 0 0 0 3px rgba(93, 226, 231, 0.24) inset;
+    }
+
+    .cell.x { color: var(--x); }
+    .cell.o { color: var(--o); }
+
+    .cell.win {
+      background: rgba(136, 247, 143, 0.2);
+      border-color: var(--ok);
+      box-shadow: 0 0 14px rgba(136, 247, 143, 0.45);
+    }
+
+    .help {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .touch-controls {
+      display: none;
+      margin-top: 12px;
+      gap: 10px;
+    }
+
+    .touch-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      grid-template-areas:
+        ". up ."
+        "left action right"
+        ". down .";
+    }
+
+    .touch-btn {
+      min-height: 48px;
+      font-size: 1.05rem;
+      font-weight: 900;
+      border-radius: 12px;
+    }
+
+    .touch-up { grid-area: up; }
+    .touch-left { grid-area: left; }
+    .touch-right { grid-area: right; }
+    .touch-down { grid-area: down; }
+
+    .touch-action {
+      grid-area: action;
+      width: 100%;
+      min-height: 50px;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    .keys {
+      display: inline-flex;
+      gap: 4px;
+      vertical-align: middle;
+    }
+
+    kbd {
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-bottom-width: 2px;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 520px) {
+      .game-shell { padding: 14px; }
+      .top { gap: 8px; }
+      .controls { gap: 8px; }
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      select, button {
+        min-height: 44px;
+      }
+
+      .touch-controls {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <div class="top">
+      <h1>X / O Game</h1>
+      <div class="controls">
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty" aria-label="Difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button id="restart">New Game</button>
+      </div>
+    </div>
+
+    <div class="status" id="status">Loading game... If board stays empty, open this file in Safari (not in preview mode).</div>
+
+    <section class="board" id="board" aria-label="Tic Tac Toe board">
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+    </section>
+
+    <div class="touch-controls" id="touchControls" aria-label="Touch controls">
+      <div class="touch-row">
+        <button class="touch-btn touch-up" data-touch="up" aria-label="Move up">▲</button>
+        <button class="touch-btn touch-left" data-touch="left" aria-label="Move left">◀</button>
+        <button class="touch-btn touch-action" data-touch="action" aria-label="Place or move">Action</button>
+        <button class="touch-btn touch-right" data-touch="right" aria-label="Move right">▶</button>
+        <button class="touch-btn touch-down" data-touch="down" aria-label="Move down">▼</button>
+      </div>
+    </div>
+
+    <p class="help">
+      Move cursor: <span class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></span>
+      • Action: <kbd>Enter</kbd> or <kbd>Space</kbd>
+      <br />
+      Rule: each side can have only 4 pieces. After 4, select your <strong>X</strong> and move it to an empty slot.
+      No-draw rule stays active (repetition/move-limit uses board control winner).
+      <br />
+      iPhone: tap board cells directly, or use on-screen controls.
+    </p>
+  </main>
+
+  <script>
+    var boardEl = document.getElementById("board");
+    var statusEl = document.getElementById("status");
+    var restartBtn = document.getElementById("restart");
+    var difficultyEl = document.getElementById("difficulty");
+    var touchControlsEl = document.getElementById("touchControls");
+
+    var WIN_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    var SCORE_WEIGHTS = [2, 1, 2, 1, 3, 1, 2, 1, 2];
+    var MAX_PIECES = 4;
+    var MAX_TURNS_WITHOUT_WIN = 80;
+    var REPETITION_LIMIT = 3;
+
+    var board = createEmptyBoard();
+    var cursor = 0;
+    var gameOver = false;
+    var winningLine = null;
+    var selectedFrom = null;
+    var isComputerThinking = false;
+    var turnCount = 0;
+    var stateVisits = Object.create(null);
+
+    function createEmptyBoard() {
+      var arr = [];
+      var i;
+      for (i = 0; i < 9; i++) {
+        arr.push("");
+      }
+      return arr;
+    }
+
+    function cloneBoard(state) {
+      return state.slice(0);
+    }
+
+    function hasClass(el, className) {
+      return (" " + el.className + " ").indexOf(" " + className + " ") !== -1;
+    }
+
+    function renderBoard() {
+      var i;
+      boardEl.innerHTML = "";
+      for (i = 0; i < 9; i++) {
+        var cell = document.createElement("div");
+        var classes = "cell";
+        cell.setAttribute("data-index", String(i));
+
+        if (i === cursor && !gameOver) classes += " cursor";
+        if (i === selectedFrom && !gameOver) classes += " picked";
+        if (board[i] === "X") classes += " x";
+        if (board[i] === "O") classes += " o";
+        if (winningLine && winningLine.indexOf(i) !== -1) classes += " win";
+
+        cell.className = classes;
+        cell.textContent = board[i];
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function winnerOf(state) {
+      var li;
+      for (li = 0; li < WIN_LINES.length; li++) {
+        var line = WIN_LINES[li];
+        var a = line[0];
+        var b = line[1];
+        var c = line[2];
+        if (state[a] && state[a] === state[b] && state[b] === state[c]) {
+          return { player: state[a], line: [a, b, c] };
+        }
+      }
+      return null;
+    }
+
+    function boardControlWinner(state) {
+      var x = 0;
+      var o = 0;
+      var i;
+      for (i = 0; i < 9; i++) {
+        if (state[i] === "X") x += SCORE_WEIGHTS[i];
+        if (state[i] === "O") o += SCORE_WEIGHTS[i];
+      }
+
+      if (x > o) return "X";
+      if (o > x) return "O";
+
+      var corners = [0, 2, 6, 8];
+      var xCorners = 0;
+      var oCorners = 0;
+      for (i = 0; i < corners.length; i++) {
+        if (state[corners[i]] === "X") xCorners += 1;
+        if (state[corners[i]] === "O") oCorners += 1;
+      }
+
+      if (xCorners > oCorners) return "X";
+      if (oCorners > xCorners) return "O";
+      return "X";
+    }
+
+    function endGame(message, line) {
+      if (typeof line === "undefined") line = null;
+      gameOver = true;
+      winningLine = line;
+      statusEl.textContent = message;
+      renderBoard();
+    }
+
+    function updateStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function cellsOf(player, state) {
+      if (!state) state = board;
+      var out = [];
+      var i;
+      for (i = 0; i < state.length; i++) {
+        if (state[i] === player) out.push(i);
+      }
+      return out;
+    }
+
+    function emptyCells(state) {
+      if (!state) state = board;
+      var out = [];
+      var i;
+      for (i = 0; i < state.length; i++) {
+        if (!state[i]) out.push(i);
+      }
+      return out;
+    }
+
+    function randomChoice(arr) {
+      if (!arr.length) return null;
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function stateKey(state, nextTurn) {
+      var i;
+      var key = "";
+      for (i = 0; i < state.length; i++) {
+        key += state[i] ? state[i] : "-";
+      }
+      return key + "|" + nextTurn;
+    }
+
+    function registerState(nextTurn) {
+      var key = stateKey(board, nextTurn);
+      var next = (stateVisits[key] || 0) + 1;
+      stateVisits[key] = next;
+      return next;
+    }
+
+    function possibleActions(player, state) {
+      if (!state) state = board;
+      var empties = emptyCells(state);
+      var pieces = cellsOf(player, state);
+      var i;
+      var j;
+      var actions = [];
+
+      if (pieces.length < MAX_PIECES) {
+        for (i = 0; i < empties.length; i++) {
+          actions.push({ type: "place", to: empties[i] });
+        }
+        return actions;
+      }
+
+      for (i = 0; i < pieces.length; i++) {
+        for (j = 0; j < empties.length; j++) {
+          actions.push({ type: "move", from: pieces[i], to: empties[j] });
+        }
+      }
+
+      return actions;
+    }
+
+    function applyAction(state, player, action) {
+      if (action.type === "place") {
+        state[action.to] = player;
+        return;
+      }
+      state[action.from] = "";
+      state[action.to] = player;
+    }
+
+    function findWinningAction(player, state) {
+      if (!state) state = board;
+      var actions = possibleActions(player, state);
+      var i;
+      for (i = 0; i < actions.length; i++) {
+        var test = cloneBoard(state);
+        applyAction(test, player, actions[i]);
+        var win = winnerOf(test);
+        if (win && win.player === player) return actions[i];
+      }
+      return null;
+    }
+
+    function countImmediateWinningActions(player, state) {
+      var actions = possibleActions(player, state);
+      var count = 0;
+      var i;
+      for (i = 0; i < actions.length; i++) {
+        var test = cloneBoard(state);
+        applyAction(test, player, actions[i]);
+        var win = winnerOf(test);
+        if (win && win.player === player) count += 1;
+      }
+      return count;
+    }
+
+    function evaluateState(state) {
+      var score = 0;
+      var i;
+      for (i = 0; i < 9; i++) {
+        if (state[i] === "O") score += SCORE_WEIGHTS[i];
+        if (state[i] === "X") score -= SCORE_WEIGHTS[i];
+      }
+
+      for (i = 0; i < WIN_LINES.length; i++) {
+        var line = WIN_LINES[i];
+        var a = line[0];
+        var b = line[1];
+        var c = line[2];
+        var oCount = 0;
+        var xCount = 0;
+        var va = state[a];
+        var vb = state[b];
+        var vc = state[c];
+
+        if (va === "O") oCount += 1;
+        if (va === "X") xCount += 1;
+        if (vb === "O") oCount += 1;
+        if (vb === "X") xCount += 1;
+        if (vc === "O") oCount += 1;
+        if (vc === "X") xCount += 1;
+
+        if (oCount > 0 && xCount > 0) continue;
+        if (oCount === 2) score += 5;
+        if (oCount === 1) score += 1;
+        if (xCount === 2) score -= 6;
+        if (xCount === 1) score -= 1;
+      }
+
+      return score;
+    }
+
+    function scoreActionHeuristic(action, player, state) {
+      var test = cloneBoard(state);
+      var score = 0;
+      applyAction(test, player, action);
+      score = evaluateState(test);
+      if (action.to === 4) score += 1;
+      if (action.to === 0 || action.to === 2 || action.to === 6 || action.to === 8) score += 0.5;
+      if (action.type === "move" && action.from === 4) score -= 0.25;
+      return score;
+    }
+
+    function bestActionEasy() {
+      return randomChoice(possibleActions("O"));
+    }
+
+    function bestActionMedium() {
+      var actions = possibleActions("O");
+      var winNow = findWinningAction("O");
+      var i;
+      var best;
+      var bestRisk;
+      var bestScore;
+
+      if (!actions.length) return null;
+      if (winNow) return winNow;
+
+      best = actions[0];
+      bestRisk = Infinity;
+      bestScore = -Infinity;
+
+      for (i = 0; i < actions.length; i++) {
+        var test = cloneBoard(board);
+        applyAction(test, "O", actions[i]);
+        var risk = countImmediateWinningActions("X", test);
+        var score = scoreActionHeuristic(actions[i], "O", board);
+
+        if (risk < bestRisk || (risk === bestRisk && score > bestScore)) {
+          best = actions[i];
+          bestRisk = risk;
+          bestScore = score;
+        }
+      }
+
+      if (Math.random() < 0.2) return randomChoice(actions);
+      return best;
+    }
+
+    function minimax(state, player, depth, depthLimit, alpha, beta) {
+      var win = winnerOf(state);
+      var actions;
+      var i;
+
+      if (win && win.player === "O") return 100 - depth;
+      if (win && win.player === "X") return depth - 100;
+      if (depth >= depthLimit) return evaluateState(state);
+
+      actions = possibleActions(player, state);
+      if (!actions.length) return evaluateState(state);
+
+      if (player === "O") {
+        var bestMax = -Infinity;
+        for (i = 0; i < actions.length; i++) {
+          var nextMax = cloneBoard(state);
+          applyAction(nextMax, "O", actions[i]);
+          bestMax = Math.max(bestMax, minimax(nextMax, "X", depth + 1, depthLimit, alpha, beta));
+          alpha = Math.max(alpha, bestMax);
+          if (beta <= alpha) break;
+        }
+        return bestMax;
+      }
+
+      var bestMin = Infinity;
+      for (i = 0; i < actions.length; i++) {
+        var nextMin = cloneBoard(state);
+        applyAction(nextMin, "X", actions[i]);
+        bestMin = Math.min(bestMin, minimax(nextMin, "O", depth + 1, depthLimit, alpha, beta));
+        beta = Math.min(beta, bestMin);
+        if (beta <= alpha) break;
+      }
+      return bestMin;
+    }
+
+    function bestActionHard() {
+      var actions = possibleActions("O");
+      var bestScore = -Infinity;
+      var bestAction = null;
+      var depthLimit = 6;
+      var inMovePhase;
+      var i;
+
+      if (!actions.length) return null;
+
+      inMovePhase = cellsOf("X").length === MAX_PIECES && cellsOf("O").length === MAX_PIECES;
+      if (inMovePhase) depthLimit = 8;
+      if (actions.length <= 4) depthLimit = 9;
+
+      bestAction = actions[0];
+      for (i = 0; i < actions.length; i++) {
+        var test = cloneBoard(board);
+        applyAction(test, "O", actions[i]);
+        var score = minimax(test, "X", 1, depthLimit, -Infinity, Infinity);
+        if (score > bestScore) {
+          bestScore = score;
+          bestAction = actions[i];
+        }
+      }
+
+      return bestAction;
+    }
+
+    function playerTurnText() {
+      var xCount = cellsOf("X").length;
+      if (xCount < MAX_PIECES) {
+        return "Your turn (X): place piece " + (xCount + 1) + "/4.";
+      }
+      if (selectedFrom === null) {
+        return "Your turn (X): select one X, then choose an empty slot.";
+      }
+      return "Your turn (X): choose an empty slot for selected X.";
+    }
+
+    function noDrawFinish(reason) {
+      var noDrawWinner = boardControlWinner(board);
+      var prefix = reason === "repetition"
+        ? "No-draw rule: repeated board position. "
+        : "No-draw rule: move limit reached. ";
+      if (noDrawWinner === "X") {
+        endGame(prefix + "YOU win by board control.");
+      } else {
+        endGame(prefix + "COMPUTER wins by board control.");
+      }
+    }
+
+    function finalizeMove(nextTurn) {
+      var w = winnerOf(board);
+      if (w) {
+        if (w.player === "X") endGame("You win (X)!", w.line);
+        else endGame("Computer wins (O)!", w.line);
+        return true;
+      }
+
+      turnCount += 1;
+      if (turnCount >= MAX_TURNS_WITHOUT_WIN) {
+        noDrawFinish("limit");
+        return true;
+      }
+
+      if (registerState(nextTurn) >= REPETITION_LIMIT) {
+        noDrawFinish("repetition");
+        return true;
+      }
+
+      return false;
+    }
+
+    function computerMove() {
+      var level;
+      var action = null;
+
+      if (gameOver) {
+        isComputerThinking = false;
+        return;
+      }
+
+      isComputerThinking = false;
+      selectedFrom = null;
+      level = difficultyEl.value;
+
+      if (level === "easy") action = bestActionEasy();
+      else if (level === "medium") action = bestActionMedium();
+      else action = bestActionHard();
+
+      if (!action) {
+        noDrawFinish("limit");
+        return;
+      }
+
+      applyAction(board, "O", action);
+
+      if (finalizeMove("X")) return;
+
+      updateStatus(playerTurnText());
+      renderBoard();
+    }
+
+    function playerAction() {
+      var xCount;
+      if (gameOver || isComputerThinking) return;
+
+      xCount = cellsOf("X").length;
+
+      if (xCount < MAX_PIECES) {
+        if (board[cursor]) {
+          updateStatus("Choose an empty slot to place X.");
+          return;
+        }
+
+        applyAction(board, "X", { type: "place", to: cursor });
+        selectedFrom = null;
+
+        if (finalizeMove("O")) return;
+
+        isComputerThinking = true;
+        updateStatus("Computer is thinking...");
+        renderBoard();
+        setTimeout(computerMove, 240);
+        return;
+      }
+
+      if (selectedFrom === null) {
+        if (board[cursor] !== "X") {
+          updateStatus("Select one of your X pieces first.");
+          return;
+        }
+        selectedFrom = cursor;
+        updateStatus("X selected. Move to an empty slot, then tap it or press Action.");
+        renderBoard();
+        return;
+      }
+
+      if (cursor === selectedFrom) {
+        selectedFrom = null;
+        updateStatus(playerTurnText());
+        renderBoard();
+        return;
+      }
+
+      if (board[cursor] === "X") {
+        selectedFrom = cursor;
+        updateStatus("Changed selected X. Choose an empty slot.");
+        renderBoard();
+        return;
+      }
+
+      if (board[cursor] === "O") {
+        updateStatus("That slot has O. Choose an empty slot.");
+        return;
+      }
+
+      applyAction(board, "X", { type: "move", from: selectedFrom, to: cursor });
+      selectedFrom = null;
+
+      if (finalizeMove("O")) return;
+
+      isComputerThinking = true;
+      updateStatus("Computer is thinking...");
+      renderBoard();
+      setTimeout(computerMove, 240);
+    }
+
+    function restart() {
+      board = createEmptyBoard();
+      cursor = 0;
+      gameOver = false;
+      winningLine = null;
+      selectedFrom = null;
+      isComputerThinking = false;
+      turnCount = 0;
+      stateVisits = Object.create(null);
+      registerState("X");
+      updateStatus(playerTurnText());
+      renderBoard();
+    }
+
+    function moveCursor(dr, dc) {
+      var row = Math.floor(cursor / 3);
+      var col = cursor % 3;
+      var nr = (row + dr + 3) % 3;
+      var nc = (col + dc + 3) % 3;
+      cursor = nr * 3 + nc;
+      renderBoard();
+    }
+
+    function closestCell(target) {
+      while (target && target !== boardEl) {
+        if (target.nodeType === 1 && hasClass(target, "cell")) return target;
+        target = target.parentNode;
+      }
+      return null;
+    }
+
+    function closestTouchButton(target) {
+      while (target && target !== touchControlsEl) {
+        if (target.nodeType === 1 && target.tagName === "BUTTON" && target.getAttribute("data-touch")) {
+          return target;
+        }
+        target = target.parentNode;
+      }
+      return null;
+    }
+
+    function keyIsControl(key, code) {
+      return key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight" ||
+        key === "Up" || key === "Down" || key === "Left" || key === "Right" ||
+        key === " " || key === "Enter" || key === "Spacebar" ||
+        code === 38 || code === 40 || code === 37 || code === 39 || code === 32 || code === 13;
+    }
+
+    boardEl.addEventListener("click", function (e) {
+      var target = e.target || e.srcElement;
+      var cell;
+      if (target && target.nodeType === 3) target = target.parentNode;
+      if (gameOver || isComputerThinking) return;
+      cell = closestCell(target);
+      if (!cell) return;
+      cursor = parseInt(cell.getAttribute("data-index"), 10);
+      renderBoard();
+      playerAction();
+    });
+
+    touchControlsEl.addEventListener("click", function (e) {
+      var target = e.target || e.srcElement;
+      var btn;
+      var touch;
+      if (target && target.nodeType === 3) target = target.parentNode;
+      btn = closestTouchButton(target);
+      if (!btn) return;
+
+      touch = btn.getAttribute("data-touch");
+      if (touch === "up") moveCursor(-1, 0);
+      if (touch === "down") moveCursor(1, 0);
+      if (touch === "left") moveCursor(0, -1);
+      if (touch === "right") moveCursor(0, 1);
+      if (touch === "action") playerAction();
+    });
+
+    window.addEventListener("keydown", function (e) {
+      var key = e.key;
+      var code = e.keyCode || e.which;
+
+      if (keyIsControl(key, code)) e.preventDefault();
+
+      if (key === "ArrowUp" || key === "Up" || code === 38) moveCursor(-1, 0);
+      if (key === "ArrowDown" || key === "Down" || code === 40) moveCursor(1, 0);
+      if (key === "ArrowLeft" || key === "Left" || code === 37) moveCursor(0, -1);
+      if (key === "ArrowRight" || key === "Right" || code === 39) moveCursor(0, 1);
+      if (key === "Enter" || key === " " || key === "Spacebar" || code === 13 || code === 32) playerAction();
+    });
+
+    restartBtn.addEventListener("click", restart);
+    difficultyEl.addEventListener("change", restart);
+
+    restart();
+  </script>
+</body>
+</html>
