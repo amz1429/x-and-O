@@ -50,6 +50,7 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 14px;
+        gap: 10px;
       }
 
       .logo {
@@ -409,7 +410,10 @@
           .join("");
 
         const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=1200");
-        if (!printWindow) return;
+        if (!printWindow) {
+          alert("المتصفح منع فتح نافذة التصدير. جرّب السماح بالنوافذ المنبثقة.");
+          return;
+        }
 
         const cardHtml = `<!doctype html>
 <html lang="ar" dir="rtl">
