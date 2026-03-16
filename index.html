@@ -249,21 +249,16 @@
       const { useMemo, useState } = React;
       const { createRoot } = ReactDOM;
 
-      const moods = [
-        { id: "calm", name: "هادئ", icon: "🕊️", tone: "هادئة" },
-        { id: "fresh", name: "منعش", icon: "🍃", tone: "منعشة" },
-        { id: "elegant", name: "أنيق", icon: "✨", tone: "راقية" },
-        { id: "bold", name: "جريء", icon: "🔥", tone: "جريئة" },
-      ];
-
       const baseNotes = [
         { id: "musk", name: "المسك", icon: "🪵", en: "Musk" },
-        { id: "cinnamon", name: "القرفة", icon: "🌰", en: "Cinnamon" },
+        { id: "sandalwood", name: "خشب الصندل", icon: "🪵", en: "Sandalwood" },
+        { id: "vanilla", name: "الفانيلا", icon: "🍦", en: "Vanilla" },
       ];
 
       const heartNotes = [
         { id: "rose", name: "الورد", icon: "🌹", en: "Rose" },
         { id: "jasmine", name: "الياسمين", icon: "🌼", en: "Jasmine" },
+        { id: "cinnamon", name: "القرفة", icon: "🌰", en: "Cinnamon" },
       ];
 
       const topNotes = [
@@ -272,19 +267,117 @@
         { id: "lavender", name: "اللافندر", icon: "💜", en: "Lavender" },
       ];
 
-      const moodNameMap = {
-        calm: "الصفاء",
-        fresh: "النسيم",
-        elegant: "الوقار",
-        bold: "الهيبة",
+      const readyPerfumes = [
+        {
+          id: "calm",
+          moodLabel: "هادئ",
+          icon: "🕊️",
+          title: "عطر هادئ",
+          description: "رائحة ناعمة ومريحة بطابع هادئ ونظيف.",
+          notes: ["الفانيلا", "الياسمين", "اللافندر"],
+          recipe: [
+            { name: "الفانيلا", drops: 3, type: "base" },
+            { name: "الياسمين", drops: 5, type: "heart" },
+            { name: "اللافندر", drops: 2, type: "top" },
+          ],
+        },
+        {
+          id: "fresh",
+          moodLabel: "منعش",
+          icon: "🍃",
+          title: "عطر منعش",
+          description: "رائحة خفيفة ومشرقة تناسب من يحب الانتعاش.",
+          notes: ["المسك", "البرغموت", "البرتقال"],
+          recipe: [
+            { name: "المسك", drops: 3, type: "base" },
+            { name: "البرغموت", drops: 3, type: "top" },
+            { name: "البرتقال", drops: 4, type: "top" },
+          ],
+        },
+        {
+          id: "elegant",
+          moodLabel: "أنيق",
+          icon: "✨",
+          title: "عطر أنيق",
+          description: "رائحة متوازنة وأنيقة بطابع زهري راقٍ.",
+          notes: ["خشب الصندل", "الورد", "الياسمين", "البرغموت"],
+          recipe: [
+            { name: "خشب الصندل", drops: 3, type: "base" },
+            { name: "الورد", drops: 2, type: "heart" },
+            { name: "الياسمين", drops: 3, type: "heart" },
+            { name: "البرغموت", drops: 2, type: "top" },
+          ],
+        },
+        {
+          id: "bold",
+          moodLabel: "جريء",
+          icon: "🔥",
+          title: "عطر جريء",
+          description: "رائحة دافئة وواضحة بلمسة حارة خفيفة.",
+          notes: ["المسك", "الورد", "القرفة", "البرتقال"],
+          recipe: [
+            { name: "المسك", drops: 3, type: "base" },
+            { name: "الورد", drops: 4, type: "heart" },
+            { name: "القرفة", drops: 1, type: "heart" },
+            { name: "البرتقال", drops: 2, type: "top" },
+          ],
+        },
+      ];
+
+      const typeLabels = {
+        base: "القاعدة",
+        heart: "القلب",
+        top: "الفوّاح",
       };
 
-      const descriptionBits = {
-        calm: "بلمسة هادئة تبعث على الطمأنينة",
-        fresh: "بنَفَس منعش يملأ المكان بالحيوية",
-        elegant: "بطابع أنيق ومتوازن يناسب كل المناسبات",
-        bold: "بحضور جريء يترك انطباعًا لا يُنسى",
-      };
+      function buildCustomRecipe(selectedBase, selectedHearts, selectedTop) {
+        const items = [];
+        if (selectedBase) items.push({ label: `${selectedBase.name} (القاعدة)`, drops: 3 });
+
+        if (selectedHearts.length === 1) {
+          const oneHeart = selectedHearts[0];
+          items.push({ label: `${oneHeart.name} (القلب)`, drops: oneHeart.id === "cinnamon" ? 1 : 5 });
+        }
+
+        if (selectedHearts.length === 2) {
+          const hasCinnamon = selectedHearts.some((item) => item.id === "cinnamon");
+          if (hasCinnamon) {
+            selectedHearts.forEach((item) => {
+              items.push({ label: `${item.name} (القلب)`, drops: item.id === "cinnamon" ? 1 : 4 });
+            });
+          } else {
+            items.push({ label: `${selectedHearts[0].name} (القلب)`, drops: 3 });
+            items.push({ label: `${selectedHearts[1].name} (القلب)`, drops: 2 });
+          }
+        }
+
+        if (selectedTop) items.push({ label: `${selectedTop.name} (الفوّاح)`, drops: 2 });
+        return items;
+      }
+
+      function buildPresetLayers(preset) {
+        if (!preset) return { base: [], heart: [], top: [] };
+        return {
+          base: preset.recipe.filter((item) => item.type === "base").map((item) => item.name),
+          heart: preset.recipe.filter((item) => item.type === "heart").map((item) => item.name),
+          top: preset.recipe.filter((item) => item.type === "top").map((item) => item.name),
+        };
+      }
+
+      function getPerfumeName(mode, selectedPreset, customName, selectedBase, selectedTop) {
+        if (mode === "ready" && selectedPreset) return selectedPreset.title;
+        const fallback = selectedBase && selectedTop ? `${selectedTop.name} ولمسة ${selectedBase.name}` : "تركيبتك الخاصة";
+        return customName.trim() || fallback;
+      }
+
+      function getPerfumeDescription(mode, selectedPreset, selectedBase, selectedHearts, selectedTop) {
+        if (mode === "ready" && selectedPreset) return selectedPreset.description;
+        if (!selectedBase || !selectedTop || selectedHearts.length === 0) {
+          return "اختر المكونات لتوليد وصف عطري تلقائي.";
+        }
+        const heartLine = selectedHearts.map((item) => item.name).join(" و");
+        return `تركيبة متوازنة تبدأ بنفحات ${selectedTop.name}، يتبعها قلب من ${heartLine}، وترتكز على قاعدة من ${selectedBase.name}.`;
+      }
 
       function NoteCard({ item, category, active, onClick }) {
         return h("button", { className: "card" + (active ? " active" : ""), onClick, type: "button" },
@@ -295,73 +388,102 @@
         );
       }
 
+      function ReadyCard({ item, onClick }) {
+        return h("button", { className: "card", type: "button", onClick },
+          h("small", null, `${item.icon} نوتة عطرية`),
+          h("div", { className: "note-name" }, item.moodLabel),
+          h("small", null, "Mood"),
+          h("p", { className: "hint" }, item.description),
+          h("div", { className: "category" }, item.title)
+        );
+      }
+
       function App() {
         const [step, setStep] = useState(0);
-        const [mood, setMood] = useState("");
-        const [base, setBase] = useState("");
-        const [hearts, setHearts] = useState([]);
-        const [top, setTop] = useState("");
+        const [mode, setMode] = useState(null);
+        const [selectedPreset, setSelectedPreset] = useState(null);
+        const [selectedBase, setSelectedBase] = useState("");
+        const [selectedHearts, setSelectedHearts] = useState([]);
+        const [selectedTop, setSelectedTop] = useState("");
         const [customName, setCustomName] = useState("");
 
-        const selectedMood = moods.find((m) => m.id === mood);
-        const selectedBase = baseNotes.find((n) => n.id === base);
-        const selectedTop = topNotes.find((n) => n.id === top);
-        const selectedHearts = heartNotes.filter((n) => hearts.includes(n.id));
-
-        const suggestedName = useMemo(() => {
-          if (!selectedMood || !selectedTop || !selectedBase) return "تركيبتك الخاصة";
-          return `${moodNameMap[selectedMood.id]} ${selectedTop.name} ولمسة ${selectedBase.name}`;
-        }, [selectedMood, selectedTop, selectedBase]);
-
-        const perfumeName = customName.trim() || suggestedName;
-
-        const description = useMemo(() => {
-          if (!selectedMood || !selectedBase || !selectedTop || selectedHearts.length === 0) {
-            return "اختر المكونات لتوليد وصف عطري تلقائي.";
-          }
-          const heartLine = selectedHearts.map((item) => item.name).join(" و");
-          return `${descriptionBits[selectedMood.id]}، تبدأ بنفحات ${selectedTop.name}، يتبعها قلب من ${heartLine}، وترتكز على قاعدة من ${selectedBase.name}.`;
-        }, [selectedMood, selectedBase, selectedTop, selectedHearts]);
+        const base = baseNotes.find((item) => item.id === selectedBase);
+        const top = topNotes.find((item) => item.id === selectedTop);
+        const hearts = heartNotes
+          .filter((item) => selectedHearts.includes(item.id))
+          .sort((a, b) => (a.id === "cinnamon" ? 1 : b.id === "cinnamon" ? -1 : 0));
 
         const recipe = useMemo(() => {
-          const items = [];
-          if (selectedBase) items.push({ label: `${selectedBase.name} (القاعدة)`, drops: 3 });
-          if (selectedHearts.length === 1) {
-            items.push({ label: `${selectedHearts[0].name} (القلب)`, drops: 5 });
+          if (mode === "ready" && selectedPreset) {
+            return selectedPreset.recipe.map((item) => ({
+              label: `${item.name} (${typeLabels[item.type]})`,
+              drops: item.drops,
+            }));
           }
-          if (selectedHearts.length === 2) {
-            items.push({ label: `${selectedHearts[0].name} (القلب)`, drops: 3 });
-            items.push({ label: `${selectedHearts[1].name} (القلب)`, drops: 2 });
+          return buildCustomRecipe(base, hearts, top);
+        }, [mode, selectedPreset, base, hearts, top]);
+
+        const layers = useMemo(() => {
+          if (mode === "ready") return buildPresetLayers(selectedPreset);
+          return {
+            base: base ? [base.name] : [],
+            heart: hearts.map((item) => item.name),
+            top: top ? [top.name] : [],
+          };
+        }, [mode, selectedPreset, base, hearts, top]);
+
+        const notesLine = useMemo(() => {
+          if (mode === "ready" && selectedPreset) return selectedPreset.notes.join(" + ");
+          return [base?.name, ...hearts.map((item) => item.name), top?.name].filter(Boolean).join(" + ");
+        }, [mode, selectedPreset, base, hearts, top]);
+
+        const perfumeName = getPerfumeName(mode, selectedPreset, customName, base, top);
+        const perfumeDescription = getPerfumeDescription(mode, selectedPreset, base, hearts, top);
+
+        const chooseMainPath = (nextMode) => {
+          setMode(nextMode);
+          setSelectedPreset(null);
+          if (nextMode === "custom") {
+            setStep(2);
           }
-          if (selectedTop) items.push({ label: `${selectedTop.name} (الفوّاح)`, drops: 2 });
-          return items;
-        }, [selectedBase, selectedHearts, selectedTop]);
+        };
+
+        const choosePreset = (preset) => {
+          setMode("ready");
+          setSelectedPreset(preset);
+          setSelectedBase("");
+          setSelectedHearts([]);
+          setSelectedTop("");
+          setCustomName("");
+          setStep(5);
+        };
 
         const toggleHeart = (id) => {
-          if (hearts.includes(id)) {
-            setHearts(hearts.filter((item) => item !== id));
+          if (selectedHearts.includes(id)) {
+            setSelectedHearts(selectedHearts.filter((item) => item !== id));
             return;
           }
-          if (hearts.length < 2) setHearts([...hearts, id]);
+          if (selectedHearts.length < 2) setSelectedHearts([...selectedHearts, id]);
         };
 
         const goStart = () => {
           setStep(0);
-          setMood("");
-          setBase("");
-          setHearts([]);
-          setTop("");
+          setMode(null);
+          setSelectedPreset(null);
+          setSelectedBase("");
+          setSelectedHearts([]);
+          setSelectedTop("");
           setCustomName("");
         };
 
         const savePerfume = () => {
           const payload = {
+            mode,
             perfumeName,
-            mood: selectedMood?.name,
-            base: selectedBase?.name,
-            heart: selectedHearts.map((n) => n.name),
-            top: selectedTop?.name,
+            description: perfumeDescription,
+            notes: notesLine,
             recipe,
+            layers,
             createdAt: new Date().toISOString(),
           };
           const history = JSON.parse(localStorage.getItem("dahdah-perfumes") || "[]");
@@ -388,8 +510,8 @@
               <body>
                 <div class="label">
                   <h2>${perfumeName}</h2>
-                  <p>${description}</p>
-                  <p><strong>الوصفة:</strong></p>
+                  <p>${perfumeDescription}</p>
+                  <p><strong>النوتات:</strong> ${notesLine || "-"}</p>
                   <ul>${recipe.map((r) => `<li>${r.label}: ${r.drops} قطرات</li>`).join("")}</ul>
                 </div>
               </body>
@@ -414,30 +536,38 @@
           h("section", { className: "app" },
             h("div", { className: "step" },
               h("div", { className: "progress" }, `الخطوة: ${progressMap[step]}`),
+
               step === 0 && h("div", { className: "step" },
                 h("span", { className: "eyebrow" }, "ركّب عطرك الدحدحي"),
                 h("h1", null, "صمّم عطرك بنفسك بسهولة وأناقة"),
-                h("p", { className: "lead" }, "اختر المزاج ثم نوتات العطرية الأساسية لتحصل على عطرك الدحدحي."),
+                h("p", { className: "lead" }, "اختر تركيبتك المثالية بخطوات بسيطة أو اختر عطرًا جاهزًا مباشرة."),
                 h("div", { className: "actions" },
-                  h("button", { className: "btn-primary", onClick: () => setStep(1) }, "ابدأ التركيب")
+                  h("button", { className: "btn-primary", onClick: () => setStep(1) }, "ابدأ")
                 )
               ),
 
               step === 1 && h("div", { className: "step" },
-                h("h2", null, "اختر المزاج"),
-                h("p", { className: "lead" }, "حدد الطابع العطري الذي يناسب شخصيتك."),
-                h("div", { className: "cards" }, moods.map((item) =>
-                  h(NoteCard, {
-                    key: item.id,
-                    item: { ...item, en: "Mood" },
-                    category: "المزاج",
-                    active: mood === item.id,
-                    onClick: () => setMood(item.id),
-                  })
-                )),
+                h("h2", null, "اختر مسارك"),
+                h("p", { className: "lead" }, "حدّد ما إذا كنت تريد عطرًا جاهزًا أو تصميم عطرك بنفسك."),
+                h("div", { className: "cards", style: { gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" } },
+                  h("button", {
+                    type: "button",
+                    className: "card" + (mode === "ready" ? " active" : ""),
+                    style: { minHeight: "104px", fontSize: "1.5rem", fontWeight: "800", borderColor: "rgba(143, 122, 184, 0.58)" },
+                    onClick: () => chooseMainPath("ready"),
+                  }, "عطر جاهز"),
+                  h("button", {
+                    type: "button",
+                    className: "card" + (mode === "custom" ? " active" : ""),
+                    style: { minHeight: "104px", fontSize: "1.5rem", fontWeight: "800", borderColor: "rgba(143, 122, 184, 0.58)" },
+                    onClick: () => chooseMainPath("custom"),
+                  }, "اصنع عطرك")
+                ),
+                mode === "ready" && h("div", { className: "cards", style: { marginTop: "16px" } },
+                  readyPerfumes.map((item) => h(ReadyCard, { key: item.id, item, onClick: () => choosePreset(item) }))
+                ),
                 h("div", { className: "actions" },
-                  h("button", { className: "btn-secondary", onClick: () => setStep(0) }, "رجوع"),
-                  h("button", { className: "btn-primary", onClick: () => setStep(2), disabled: !mood }, "التالي")
+                  h("button", { className: "btn-secondary", onClick: () => setStep(0) }, "رجوع")
                 )
               ),
 
@@ -449,13 +579,13 @@
                     key: item.id,
                     item,
                     category: "Base Note = القاعدة",
-                    active: base === item.id,
-                    onClick: () => setBase(item.id),
+                    active: selectedBase === item.id,
+                    onClick: () => setSelectedBase(item.id),
                   })
                 )),
                 h("div", { className: "actions" },
                   h("button", { className: "btn-secondary", onClick: () => setStep(1) }, "رجوع"),
-                  h("button", { className: "btn-primary", onClick: () => setStep(3), disabled: !base }, "التالي")
+                  h("button", { className: "btn-primary", onClick: () => setStep(3), disabled: !selectedBase }, "التالي")
                 )
               ),
 
@@ -467,14 +597,16 @@
                     key: item.id,
                     item,
                     category: "Heart Note = القلب",
-                    active: hearts.includes(item.id),
+                    active: selectedHearts.includes(item.id),
                     onClick: () => toggleHeart(item.id),
                   })
                 )),
-                hearts.length === 2 && h("p", { className: "hint" }, "تم اختيار نوتتين للقلب (سيتم توزيع 3 + 2 قطرات)."),
+                selectedHearts.length === 2 && !selectedHearts.includes("cinnamon") && h("p", { className: "hint" }, "تم اختيار نوتتين للقلب (سيتم توزيع 3 + 2 قطرات)."),
+                selectedHearts.includes("cinnamon") && h("p", { className: "hint" }, "القرفة نوتة قوية في القلب، لذلك تُستخدم بحد أقصى قطرة واحدة."),
+                selectedHearts.length === 1 && selectedHearts[0] === "cinnamon" && h("p", { className: "hint" }, "للحفاظ على توازن الوصفة، أضف نوتة قلب ثانية مع القرفة."),
                 h("div", { className: "actions" },
                   h("button", { className: "btn-secondary", onClick: () => setStep(2) }, "رجوع"),
-                  h("button", { className: "btn-primary", onClick: () => setStep(4), disabled: hearts.length < 1 || hearts.length > 2 }, "التالي")
+                  h("button", { className: "btn-primary", onClick: () => setStep(4), disabled: selectedHearts.length < 1 || selectedHearts.length > 2 || (selectedHearts.length === 1 && selectedHearts[0] === "cinnamon") }, "التالي")
                 )
               ),
 
@@ -486,27 +618,31 @@
                     key: item.id,
                     item,
                     category: "Top Note = الفوّاح",
-                    active: top === item.id,
-                    onClick: () => setTop(item.id),
+                    active: selectedTop === item.id,
+                    onClick: () => setSelectedTop(item.id),
                   })
                 )),
                 h("div", { className: "actions" },
                   h("button", { className: "btn-secondary", onClick: () => setStep(3) }, "رجوع"),
-                  h("button", { className: "btn-primary", onClick: () => setStep(5), disabled: !top }, "عرض النتيجة")
+                  h("button", { className: "btn-primary", onClick: () => { setMode("custom"); setSelectedPreset(null); setStep(5); }, disabled: !selectedTop }, "عرض النتيجة")
                 )
               ),
 
               step === 5 && h("div", { className: "step" },
                 h("span", { className: "eyebrow" }, "تركيبتك النهائية"),
                 h("h2", null, perfumeName),
-                h("p", { className: "lead" }, description),
-                h("input", {
+                h("p", { className: "lead" }, perfumeDescription),
+                mode === "custom" && h("input", {
                   className: "input",
                   value: customName,
                   placeholder: "اكتب اسمًا مخصصًا لعطرك (اختياري)",
                   onChange: (event) => setCustomName(event.target.value),
                 }),
                 h("div", { className: "result-grid" },
+                  h("article", { className: "panel" },
+                    h("h3", null, "النوتات"),
+                    h("p", { className: "lead" }, notesLine || "-")
+                  ),
                   h("article", { className: "panel" },
                     h("h3", null, "الوصفة النهائية بالقطرات"),
                     h("ul", { className: "recipe-list" },
@@ -516,14 +652,14 @@
                   h("article", { className: "panel" },
                     h("h3", null, "هرم النوتات العطرية"),
                     h("div", { className: "pyramid" },
-                      h("div", { className: "layer top" }, `${selectedTop?.name || "-"} · الفوّاح`),
-                      h("div", { className: "layer heart" }, `${selectedHearts.map((x) => x.name).join(" + ") || "-"} · القلب`),
-                      h("div", { className: "layer base" }, `${selectedBase?.name || "-"} · القاعدة`)
+                      h("div", { className: "layer top" }, `${layers.top.join(" + ") || "-"} · الفوّاح`),
+                      h("div", { className: "layer heart" }, `${layers.heart.join(" + ") || "-"} · القلب`),
+                      h("div", { className: "layer base" }, `${layers.base.join(" + ") || "-"} · القاعدة`)
                     )
                   ),
                   h("article", { className: "panel full" },
                     h("h3", null, "طريقة التحضير"),
-                    h("p", { className: "lead" }, "1) أضف الزيوت العطرية حسب الوصفة. 2) أكمل العبوة بزيت الجوجوبا. 3) أغلق الزجاجة ورجّها بلطف لعدة ثوانٍ."),
+                    h("p", { className: "lead" }, "1) أضف الزيوت العطرية حسب الوصفة. 2) أكمل العبوة بزيت الجوجوبا. 3) أغلق الزجاجة ورجّها بلطف لعدة ثوانٍ.")
                   )
                 ),
                 h("div", { className: "actions" },
@@ -539,5 +675,7 @@
 
       createRoot(document.getElementById("root")).render(h(App));
     </script>
+
+
   </body>
 </html>
